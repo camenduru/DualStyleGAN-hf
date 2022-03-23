@@ -1,0 +1,3 @@
+[submodule "DualStyleGAN"]
+	path = DualStyleGAN
+	url = https://github.com/williamyang1991/DualStyleGAN
