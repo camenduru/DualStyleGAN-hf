@@ -136,7 +136,7 @@ def run(
     transform: Callable,
     device: torch.device,
 ) -> tuple[PIL.Image.Image, PIL.Image.Image, PIL.Image.Image, PIL.Image.Image,
-           PIL.Image, PIL.Image]:
+           PIL.Image.Image]:
     generator = generator_dict[style_type]
     exstyles = exstyle_dict[style_type]
 
