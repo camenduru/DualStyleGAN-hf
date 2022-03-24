@@ -227,7 +227,7 @@ def main():
                              device=device)
     func = functools.update_wrapper(func, run)
 
-    image_paths = sorted(pathlib.Path('images').glob('*'))
+    image_paths = sorted(pathlib.Path('images').glob('*.jpg'))
     examples = [[path.as_posix(), 'cartoon', 26] for path in image_paths]
 
     gr.Interface(
