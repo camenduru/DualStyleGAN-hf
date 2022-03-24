@@ -31,13 +31,35 @@ ORIGINAL_REPO_URL = 'https://github.com/williamyang1991/DualStyleGAN'
 TITLE = 'williamyang1991/DualStyleGAN'
 DESCRIPTION = f"""A demo for {ORIGINAL_REPO_URL}
 
-You can select style images for cartoon from the table below.
-(Currently, style image tables for other style types are not available.)
-
+You can select style images for each style type from the tables below.
 The style image index should be in the following range:
 (cartoon: 0-316, caricature: 0-198, anime: 0-173, arcane: 0-99, comic: 0-100, pixar: 0-121, slamdunk: 0-119)
 """
-ARTICLE = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
+ARTICLE = """## Style images
+
+Note that the style images here for Arcane, comic, Pixar, and Slamdunk are the reconstructed ones, not the original ones due to copyright issues.
+
+### Cartoon
+![cartoon style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/cartoon_overview.jpg)
+
+### Caricature
+![caricature style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/caricature_overview.jpg)
+
+### Anime
+![anime style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/anime_overview.jpg)
+
+### Arcane
+![arcane style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_arcane_overview.jpg)
+
+### Comic
+![comic style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_comic_overview.jpg)
+
+### Pixar
+![pixar style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_pixar_overview.jpg)
+
+### Slamdunk
+![slamdunk style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_slamdunk_overview.jpg)
+"""
 
 TOKEN = os.environ['TOKEN']
 MODEL_REPO = 'hysts/DualStyleGAN'
