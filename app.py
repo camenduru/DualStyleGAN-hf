@@ -26,7 +26,6 @@ import torchvision.transforms as T
 from model.dualstylegan import DualStyleGAN
 from model.encoder.align_all_parallel import align_face
 from model.encoder.psp import pSp
-from util import load_image, visualize
 
 ORIGINAL_REPO_URL = 'https://github.com/williamyang1991/DualStyleGAN'
 TITLE = 'williamyang1991/DualStyleGAN'
