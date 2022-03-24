@@ -10,7 +10,7 @@ import sys
 import tarfile
 from typing import Callable
 
-if os.environ['SYSTEM'] == 'spaces':
+if os.environ.get('SYSTEM') == 'spaces':
     os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/fused_act.py")
     os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/upfirdn2d.py")
 
