@@ -7,7 +7,6 @@ import functools
 import os
 import pathlib
 import sys
-import tarfile
 from typing import Callable
 
 if os.environ.get('SYSTEM') == 'spaces':
@@ -29,6 +28,24 @@ from model.encoder.align_all_parallel import align_face
 from model.encoder.psp import pSp
 from util import load_image, visualize
 
+ORIGINAL_REPO_URL = 'https://github.com/williamyang1991/DualStyleGAN'
+TITLE = 'williamyang1991/DualStyleGAN'
+DESCRIPTION = f"""A demo for {ORIGINAL_REPO_URL}
+
+You can select style images for cartoon from the table below.
+
+The style image index should be in the following range:
+
+- cartoon: 0-316
+- caricature: 0-198
+- anime: 0-173
+- arcane: 0-99
+- comic: 0-100
+- pixar: 0-121
+- slamdunk: 0-119
+"""
+ARTICLE = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
+
 TOKEN = os.environ['TOKEN']
 
 MODEL_REPO = 'hysts/DualStyleGAN'
@@ -47,17 +64,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--allow-flagging', type=str, default='never')
     parser.add_argument('--allow-screenshot', action='store_true')
     return parser.parse_args()
-
-
-def download_cartoon_images() -> None:
-    image_dir = pathlib.Path('cartoon')
-    if not image_dir.exists():
-        path = huggingface_hub.hf_hub_download('hysts/DualStyleGAN-Cartoon',
-                                               'cartoon.tar.gz',
-                                               repo_type='dataset',
-                                               use_auth_token=TOKEN)
-        with tarfile.open(path) as f:
-            f.extractall()
 
 
 def load_encoder(device: torch.device) -> nn.Module:
@@ -188,13 +194,7 @@ def run(
     img_gen1 = postprocess(img_gen[1])
     img_gen2 = postprocess(img_gen2[0])
 
-    try:
-        style_image_dir = pathlib.Path(style_type)
-        style_image = PIL.Image.open(style_image_dir / stylename)
-    except Exception:
-        style_image = None
-
-    return image, style_image, img_rec, img_gen0, img_gen1, img_gen2
+    return image, img_rec, img_gen0, img_gen1, img_gen2
 
 
 def main():
@@ -221,7 +221,6 @@ def main():
         for style_type in style_types
     }
 
-    download_cartoon_images()
     dlib_landmark_model = create_dlib_landmark_model()
     encoder = load_encoder(device)
     transform = create_transform()
@@ -234,14 +233,6 @@ def main():
                              transform=transform,
                              device=device)
     func = functools.update_wrapper(func, run)
-
-    repo_url = 'https://github.com/williamyang1991/DualStyleGAN'
-    title = 'williamyang1991/DualStyleGAN'
-    description = f"""A demo for {repo_url}
-
-    You can select style images for cartoon from the table below.
-    """
-    article = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
 
     image_paths = sorted(pathlib.Path('images').glob('*'))
     examples = [[path.as_posix(), 'cartoon', 26] for path in image_paths]
@@ -260,7 +251,6 @@ def main():
         ],
         [
             gr.outputs.Image(type='pil', label='Aligned Face'),
-            gr.outputs.Image(type='pil', label='Selected Style Image'),
             gr.outputs.Image(type='pil', label='Reconstructed'),
             gr.outputs.Image(type='pil', label='Result 1'),
             gr.outputs.Image(type='pil', label='Result 2'),
@@ -268,9 +258,9 @@ def main():
         ],
         examples=examples,
         theme=args.theme,
-        title=title,
-        description=description,
-        article=article,
+        title=TITLE,
+        description=DESCRIPTION,
+        article=ARTICLE,
         allow_screenshot=args.allow_screenshot,
         allow_flagging=args.allow_flagging,
         live=args.live,
