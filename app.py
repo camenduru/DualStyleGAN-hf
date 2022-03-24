@@ -151,6 +151,8 @@ def run(
     image,
     style_type: str,
     style_id: float,
+    structure_weight: float,
+    color_weight: float,
     dlib_landmark_model,
     encoder: nn.Module,
     generator_dict: dict[str, nn.Module],
@@ -191,7 +193,8 @@ def run(
                            truncation=0.7,
                            truncation_latent=0,
                            use_res=True,
-                           interp_weights=[0.6] * 7 + [1] * 11)
+                           interp_weights=[structure_weight] * 7 +
+                           [color_weight] * 11)
     img_gen = torch.clamp(img_gen.detach(), -1, 1)
     # deactivate color-related layers by setting w_c = 0
     img_gen2, _ = generator([instyle],
@@ -200,7 +203,7 @@ def run(
                             truncation=0.7,
                             truncation_latent=0,
                             use_res=True,
-                            interp_weights=[0.6] * 7 + [0] * 11)
+                            interp_weights=[structure_weight] * 7 + [0] * 11)
     img_gen2 = torch.clamp(img_gen2.detach(), -1, 1)
 
     img_rec = postprocess(img_rec[0])
@@ -249,7 +252,8 @@ def main():
     func = functools.update_wrapper(func, run)
 
     image_paths = sorted(pathlib.Path('images').glob('*.jpg'))
-    examples = [[path.as_posix(), 'cartoon', 26] for path in image_paths]
+    examples = [[path.as_posix(), 'cartoon', 26, 0.6, 1.0]
+                for path in image_paths]
 
     gr.Interface(
         func,
@@ -262,6 +266,10 @@ def main():
                 label='Style Type',
             ),
             gr.inputs.Number(default=26, label='Style Image Index'),
+            gr.inputs.Slider(
+                0, 1, step=0.1, default=0.6, label='Structure Weight'),
+            gr.inputs.Slider(0, 1, step=0.1, default=1.0,
+                             label='Color Weight'),
         ],
         [
             gr.outputs.Image(type='pil', label='Aligned Face'),
