@@ -244,9 +244,13 @@ def main():
         [
             gr.outputs.Image(type='pil', label='Aligned Face'),
             gr.outputs.Image(type='pil', label='Reconstructed'),
-            gr.outputs.Image(type='pil', label='Result 1'),
-            gr.outputs.Image(type='pil', label='Result 2'),
-            gr.outputs.Image(type='pil', label='Result 3'),
+            gr.outputs.Image(type='pil',
+                             label='Result 1 (Color and structure transfer)'),
+            gr.outputs.Image(type='pil',
+                             label='Result 2 (Structure transfer only)'),
+            gr.outputs.Image(
+                type='pil',
+                label='Result 3 (Color-related layers deactivated)'),
         ],
         examples=examples,
         theme=args.theme,
