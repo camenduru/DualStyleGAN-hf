@@ -129,15 +129,22 @@ def postprocess(tensor: torch.Tensor) -> PIL.Image.Image:
 @torch.inference_mode()
 def run(
     image,
-    style_id: int,
+    style_type: str,
+    style_id: float,
     dlib_landmark_model,
     encoder: nn.Module,
-    generator: nn.Module,
-    exstyles: dict[str, np.ndarray],
+    generator_dict: dict[str, nn.Module],
+    exstyle_dict: dict[str, dict[str, np.ndarray]],
     transform: Callable,
     device: torch.device,
-    style_image_dir: pathlib.Path,
-) -> tuple[PIL.Image.Image, PIL.Image.Image, PIL.Image.Image, PIL.Image.Image]:
+) -> tuple[PIL.Image.Image, PIL.Image.Image, PIL.Image.Image, PIL.Image.Image,
+           PIL.Image, PIL.Image]:
+    generator = generator_dict[style_type]
+    exstyles = exstyle_dict[style_type]
+
+    style_id = int(style_id)
+    style_id = min(max(0, style_id), len(exstyles) - 1)
+
     stylename = list(exstyles.keys())[style_id]
 
     image = align_face(filepath=image.name, predictor=dlib_landmark_model)
@@ -181,7 +188,11 @@ def run(
     img_gen1 = postprocess(img_gen[1])
     img_gen2 = postprocess(img_gen2[0])
 
-    style_image = PIL.Image.open(style_image_dir / stylename)
+    try:
+        style_image_dir = pathlib.Path(style_type)
+        style_image = PIL.Image.open(style_image_dir / stylename)
+    except Exception:
+        style_image = None
 
     return image, style_image, img_rec, img_gen0, img_gen1, img_gen2
 
@@ -192,43 +203,60 @@ def main():
     args = parse_args()
     device = torch.device(args.device)
 
-    style_type = 'cartoon'
-    style_image_dir = pathlib.Path(style_type)
+    style_types = [
+        'cartoon',
+        'caricature',
+        'anime',
+        'arcane',
+        'comic',
+        'pixar',
+        'slamdunk',
+    ]
+    generator_dict = {
+        style_type: load_generator(style_type, device)
+        for style_type in style_types
+    }
+    exstyle_dict = {
+        style_type: load_exstylecode(style_type)
+        for style_type in style_types
+    }
 
     download_cartoon_images()
     dlib_landmark_model = create_dlib_landmark_model()
     encoder = load_encoder(device)
-    generator = load_generator(style_type, device)
-    exstyles = load_exstylecode(style_type)
     transform = create_transform()
 
     func = functools.partial(run,
                              dlib_landmark_model=dlib_landmark_model,
                              encoder=encoder,
-                             generator=generator,
-                             exstyles=exstyles,
+                             generator_dict=generator_dict,
+                             exstyle_dict=exstyle_dict,
                              transform=transform,
-                             device=device,
-                             style_image_dir=style_image_dir)
+                             device=device)
     func = functools.update_wrapper(func, run)
 
     repo_url = 'https://github.com/williamyang1991/DualStyleGAN'
     title = 'williamyang1991/DualStyleGAN'
     description = f"""A demo for {repo_url}
 
-    You can select style images from the table below.
+    You can select style images for cartoon from the table below.
     """
     article = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
 
     image_paths = sorted(pathlib.Path('images').glob('*'))
-    examples = [[path.as_posix(), 26] for path in image_paths]
+    examples = [[path.as_posix(), 'cartoon', 26] for path in image_paths]
 
     gr.Interface(
         func,
         [
-            gr.inputs.Image(type='file', label='Image'),
-            gr.inputs.Slider(
-                0, 316, step=1, default=26, label='Style Image Index'),
+            gr.inputs.Image(type='file', label='Input Image'),
+            gr.inputs.Radio(
+                style_types,
+                type='value',
+                default='cartoon',
+                label='Style Type',
+            ),
+            gr.inputs.Number(default=26, label='Style Image Index'),
         ],
         [
             gr.outputs.Image(type='pil', label='Aligned Face'),
