@@ -39,7 +39,6 @@ The style image index should be in the following range: (cartoon: 0-316, caricat
 ARTICLE = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
 
 TOKEN = os.environ['TOKEN']
-
 MODEL_REPO = 'hysts/DualStyleGAN'
 
 
