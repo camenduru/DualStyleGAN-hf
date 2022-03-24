@@ -66,7 +66,7 @@ def load_encoder(device: torch.device) -> nn.Module:
                                                 use_auth_token=TOKEN)
     ckpt = torch.load(ckpt_path, map_location='cpu')
     opts = ckpt['opts']
-    opts['device'] = 'cpu'
+    opts['device'] = device.type
     opts['checkpoint_path'] = ckpt_path
     opts = argparse.Namespace(**opts)
     model = pSp(opts)
@@ -151,7 +151,7 @@ def run(
                                resize=False)
     img_rec = torch.clamp(img_rec.detach(), -1, 1)
 
-    latent = torch.tensor(exstyles[stylename]).repeat(2, 1, 1)
+    latent = torch.tensor(exstyles[stylename]).repeat(2, 1, 1).to(device)
     # latent[0] for both color and structrue transfer and latent[1] for only structrue transfer
     latent[1, 7:18] = instyle[0, 7:18]
     exstyle = generator.generator.style(
