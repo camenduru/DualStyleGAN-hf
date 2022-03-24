@@ -33,8 +33,10 @@ TITLE = 'williamyang1991/DualStyleGAN'
 DESCRIPTION = f"""A demo for {ORIGINAL_REPO_URL}
 
 You can select style images for cartoon from the table below.
+(Currently, style image tables for other style types are not available.)
 
-The style image index should be in the following range: (cartoon: 0-316, caricature: 0-198, anime: 0-173, arcane: 0-99, comic: 0-100, pixar: 0-121, slamdunk: 0-119)
+The style image index should be in the following range:
+(cartoon: 0-316, caricature: 0-198, anime: 0-173, arcane: 0-99, comic: 0-100, pixar: 0-121, slamdunk: 0-119)
 """
 ARTICLE = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
 
