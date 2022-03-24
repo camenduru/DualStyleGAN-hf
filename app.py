@@ -214,8 +214,11 @@ def main():
 
     repo_url = 'https://github.com/williamyang1991/DualStyleGAN'
     title = 'williamyang1991/DualStyleGAN'
-    description = f'A demo for {repo_url}'
-    article = None
+    description = f"""A demo for {repo_url}
+
+    You can select style images from the table below.
+    """
+    article = '![cartoon style images](https://user-images.githubusercontent.com/18130694/159848447-96fa5194-32ec-42f0-945a-3b1958bf6e5e.jpg)'
 
     image_paths = sorted(pathlib.Path('images').glob('*'))
     examples = [[path.as_posix(), 26] for path in image_paths]
@@ -224,15 +227,16 @@ def main():
         func,
         [
             gr.inputs.Image(type='file', label='Image'),
-            gr.inputs.Slider(0, 316, step=1, default=26, label='Style'),
+            gr.inputs.Slider(
+                0, 316, step=1, default=26, label='Style Image Index'),
         ],
         [
-            gr.outputs.Image(type='pil', label='Aligned face'),
-            gr.outputs.Image(type='pil', label='Style'),
+            gr.outputs.Image(type='pil', label='Aligned Face'),
+            gr.outputs.Image(type='pil', label='Selected Style Image'),
             gr.outputs.Image(type='pil', label='Reconstructed'),
-            gr.outputs.Image(type='pil', label='Gen 1'),
-            gr.outputs.Image(type='pil', label='Gen 2'),
-            gr.outputs.Image(type='pil', label='Gen 3'),
+            gr.outputs.Image(type='pil', label='Result 1'),
+            gr.outputs.Image(type='pil', label='Result 2'),
+            gr.outputs.Image(type='pil', label='Result 3'),
         ],
         examples=examples,
         theme=args.theme,
