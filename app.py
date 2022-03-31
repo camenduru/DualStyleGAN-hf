@@ -29,7 +29,9 @@ from model.encoder.psp import pSp
 
 ORIGINAL_REPO_URL = 'https://github.com/williamyang1991/DualStyleGAN'
 TITLE = 'williamyang1991/DualStyleGAN'
-DESCRIPTION = f"""A demo for {ORIGINAL_REPO_URL}
+DESCRIPTION = f"""This is a demo for {ORIGINAL_REPO_URL}.
+
+![overview](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/overview.jpg)
 
 You can select style images for each style type from the tables below.
 The style image index should be in the following range:
