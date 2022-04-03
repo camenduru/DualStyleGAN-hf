@@ -29,15 +29,15 @@ from model.encoder.psp import pSp
 
 ORIGINAL_REPO_URL = 'https://github.com/williamyang1991/DualStyleGAN'
 TITLE = 'williamyang1991/DualStyleGAN'
-DESCRIPTION = f"""This is a demo for {ORIGINAL_REPO_URL}.
+DESCRIPTION = f'''This is a demo for {ORIGINAL_REPO_URL}.
 
 ![overview](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/overview.jpg)
 
 You can select style images for each style type from the tables below.
 The style image index should be in the following range:
 (cartoon: 0-316, caricature: 0-198, anime: 0-173, arcane: 0-99, comic: 0-100, pixar: 0-121, slamdunk: 0-119)
-"""
-ARTICLE = """## Style images
+'''
+ARTICLE = '''## Style images
 
 Note that the style images here for Arcane, comic, Pixar, and Slamdunk are the reconstructed ones, not the original ones due to copyright issues.
 
@@ -61,7 +61,7 @@ Note that the style images here for Arcane, comic, Pixar, and Slamdunk are the r
 
 ### Slamdunk
 ![slamdunk style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_slamdunk_overview.jpg)
-"""
+'''
 
 TOKEN = os.environ['TOKEN']
 MODEL_REPO = 'hysts/DualStyleGAN'
@@ -261,12 +261,10 @@ def main():
         func,
         [
             gr.inputs.Image(type='file', label='Input Image'),
-            gr.inputs.Radio(
-                style_types,
-                type='value',
-                default='cartoon',
-                label='Style Type',
-            ),
+            gr.inputs.Radio(style_types,
+                            type='value',
+                            default='cartoon',
+                            label='Style Type'),
             gr.inputs.Number(default=26, label='Style Image Index'),
             gr.inputs.Slider(
                 0, 1, step=0.1, default=0.6, label='Structure Weight'),
