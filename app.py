@@ -9,12 +9,6 @@ import pathlib
 import sys
 from typing import Callable
 
-if os.environ.get('SYSTEM') == 'spaces':
-    os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/fused_act.py")
-    os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/upfirdn2d.py")
-
-sys.path.insert(0, 'DualStyleGAN')
-
 import dlib
 import gradio as gr
 import huggingface_hub
@@ -23,19 +17,27 @@ import PIL.Image
 import torch
 import torch.nn as nn
 import torchvision.transforms as T
+
+if os.environ.get('SYSTEM') == 'spaces':
+    os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/fused_act.py")
+    os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/upfirdn2d.py")
+
+sys.path.insert(0, 'DualStyleGAN')
+
 from model.dualstylegan import DualStyleGAN
 from model.encoder.align_all_parallel import align_face
 from model.encoder.psp import pSp
 
-ORIGINAL_REPO_URL = 'https://github.com/williamyang1991/DualStyleGAN'
 TITLE = 'williamyang1991/DualStyleGAN'
-DESCRIPTION = f'''This is a demo for {ORIGINAL_REPO_URL}.
+DESCRIPTION = '''This is an unofficial demo for https://github.com/williamyang1991/DualStyleGAN.
 
 ![overview](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/overview.jpg)
 
 You can select style images for each style type from the tables below.
 The style image index should be in the following range:
 (cartoon: 0-316, caricature: 0-198, anime: 0-173, arcane: 0-99, comic: 0-100, pixar: 0-121, slamdunk: 0-119)
+
+Expected execution time on Hugging Face Spaces: 15s
 '''
 ARTICLE = '''## Style images
 
@@ -61,6 +63,8 @@ Note that the style images here for Arcane, comic, Pixar, and Slamdunk are the r
 
 ### Slamdunk
 ![slamdunk style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_slamdunk_overview.jpg)
+
+<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.dualstylegan" alt="visitor badge"/></center>
 '''
 
 TOKEN = os.environ['TOKEN']
@@ -217,8 +221,6 @@ def run(
 
 
 def main():
-    gr.close_all()
-
     args = parse_args()
     device = torch.device(args.device)
 
