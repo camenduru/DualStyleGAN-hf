@@ -19,7 +19,9 @@ if os.environ.get('SYSTEM') == 'spaces':
     os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/fused_act.py")
     os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/upfirdn2d.py")
 
-sys.path.insert(0, 'DualStyleGAN')
+app_dir = pathlib.Path(__file__).parent
+submodule_dir = app_dir / 'DualStyleGAN'
+sys.path.insert(0, submodule_dir.as_posix())
 
 from model.dualstylegan import DualStyleGAN
 from model.encoder.align_all_parallel import align_face
