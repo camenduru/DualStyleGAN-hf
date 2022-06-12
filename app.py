@@ -3,294 +3,229 @@
 from __future__ import annotations
 
 import argparse
-import functools
-import os
 import pathlib
-import sys
-from typing import Callable
 
-import dlib
 import gradio as gr
-import huggingface_hub
-import numpy as np
-import PIL.Image
-import torch
-import torch.nn as nn
-import torchvision.transforms as T
 
-if os.environ.get('SYSTEM') == 'spaces':
-    os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/fused_act.py")
-    os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/upfirdn2d.py")
+from dualstylegan import Model
 
-sys.path.insert(0, 'DualStyleGAN')
+DESCRIPTION = '''# Portrait Style Transfer with <a href="https://github.com/williamyang1991/DualStyleGAN">DualStyleGAN</a>
 
-from model.dualstylegan import DualStyleGAN
-from model.encoder.align_all_parallel import align_face
-from model.encoder.psp import pSp
-
-TITLE = 'williamyang1991/DualStyleGAN'
-DESCRIPTION = '''This is an unofficial demo for https://github.com/williamyang1991/DualStyleGAN.
-
-![overview](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/overview.jpg)
-
-You can select style images for each style type from the tables below.
-The style image index should be in the following range:
-(cartoon: 0-316, caricature: 0-198, anime: 0-173, arcane: 0-99, comic: 0-100, pixar: 0-121, slamdunk: 0-119)
-
-Expected execution time on Hugging Face Spaces: 15s
+<img id="overview" alt="overview" src="https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/overview.jpg" />
 '''
-ARTICLE = '''## Style images
-
-Note that the style images here for Arcane, comic, Pixar, and Slamdunk are the reconstructed ones, not the original ones due to copyright issues.
-
-### Cartoon
-![cartoon style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/cartoon_overview.jpg)
-
-### Caricature
-![caricature style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/caricature_overview.jpg)
-
-### Anime
-![anime style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/anime_overview.jpg)
-
-### Arcane
-![arcane style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_arcane_overview.jpg)
-
-### Comic
-![comic style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_comic_overview.jpg)
-
-### Pixar
-![pixar style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_pixar_overview.jpg)
-
-### Slamdunk
-![slamdunk style images](https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images/Reconstruction_slamdunk_overview.jpg)
-
-<center><img src="https://visitor-badge.glitch.me/badge?page_id=hysts.dualstylegan" alt="visitor badge"/></center>
-'''
-
-TOKEN = os.environ['TOKEN']
-MODEL_REPO = 'hysts/DualStyleGAN'
+FOOTER = '<img id="visitor-badge" alt="visitor badge" src="https://visitor-badge.glitch.me/badge?page_id=gradio-blocks.dualstylegan" />'
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument('--theme', type=str)
-    parser.add_argument('--live', action='store_true')
     parser.add_argument('--share', action='store_true')
     parser.add_argument('--port', type=int)
     parser.add_argument('--disable-queue',
                         dest='enable_queue',
                         action='store_false')
-    parser.add_argument('--allow-flagging', type=str, default='never')
     return parser.parse_args()
 
 
-def load_encoder(device: torch.device) -> nn.Module:
-    ckpt_path = huggingface_hub.hf_hub_download(MODEL_REPO,
-                                                'models/encoder.pt',
-                                                use_auth_token=TOKEN)
-    ckpt = torch.load(ckpt_path, map_location='cpu')
-    opts = ckpt['opts']
-    opts['device'] = device.type
-    opts['checkpoint_path'] = ckpt_path
-    opts = argparse.Namespace(**opts)
-    model = pSp(opts)
-    model.to(device)
-    model.eval()
-    return model
+def get_style_image_url(style_name: str) -> str:
+    base_url = 'https://raw.githubusercontent.com/williamyang1991/DualStyleGAN/main/doc_images'
+    filenames = {
+        'cartoon': 'cartoon_overview.jpg',
+        'caricature': 'caricature_overview.jpg',
+        'anime': 'anime_overview.jpg',
+        'arcane': 'Reconstruction_arcane_overview.jpg',
+        'comic': 'Reconstruction_comic_overview.jpg',
+        'pixar': 'Reconstruction_pixar_overview.jpg',
+        'slamdunk': 'Reconstruction_slamdunk_overview.jpg',
+    }
+    return f'{base_url}/{filenames[style_name]}'
 
 
-def load_generator(style_type: str, device: torch.device) -> nn.Module:
-    model = DualStyleGAN(1024, 512, 8, 2, res_index=6)
-    ckpt_path = huggingface_hub.hf_hub_download(
-        MODEL_REPO, f'models/{style_type}/generator.pt', use_auth_token=TOKEN)
-    ckpt = torch.load(ckpt_path, map_location='cpu')
-    model.load_state_dict(ckpt['g_ema'])
-    model.to(device)
-    model.eval()
-    return model
+def get_style_image_markdown_text(style_name: str) -> str:
+    url = get_style_image_url(style_name)
+    return f'<center><img id="style-image" src="{url}" alt="style image"></center>'
 
 
-def load_exstylecode(style_type: str) -> dict[str, np.ndarray]:
-    if style_type in ['cartoon', 'caricature', 'anime']:
-        filename = 'refined_exstyle_code.npy'
-    else:
-        filename = 'exstyle_code.npy'
-    path = huggingface_hub.hf_hub_download(MODEL_REPO,
-                                           f'models/{style_type}/{filename}',
-                                           use_auth_token=TOKEN)
-    exstyles = np.load(path, allow_pickle=True).item()
-    return exstyles
+def update_slider(choice: str) -> dict:
+    max_vals = {
+        'cartoon': 316,
+        'caricature': 198,
+        'anime': 173,
+        'arcane': 99,
+        'comic': 100,
+        'pixar': 121,
+        'slamdunk': 119,
+    }
+    return gr.Slider.update(maximum=max_vals[choice])
 
 
-def create_transform() -> Callable:
-    transform = T.Compose([
-        T.Resize(256),
-        T.CenterCrop(256),
-        T.ToTensor(),
-        T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-    ])
-    return transform
+def update_style_image(style_name: str) -> dict:
+    text = get_style_image_markdown_text(style_name)
+    return gr.Markdown.update(value=text)
 
 
-def create_dlib_landmark_model():
-    path = huggingface_hub.hf_hub_download(
-        'hysts/dlib_face_landmark_model',
-        'shape_predictor_68_face_landmarks.dat',
-        use_auth_token=TOKEN)
-    return dlib.shape_predictor(path)
+def set_example_image(example: list) -> dict:
+    return gr.Image.update(value=example[0])
 
 
-def denormalize(tensor: torch.Tensor) -> torch.Tensor:
-    return torch.clamp((tensor + 1) / 2 * 255, 0, 255).to(torch.uint8)
+def set_example_styles(example: list) -> list[dict]:
+    return [
+        gr.Radio.update(value=example[0]),
+        gr.Slider.update(value=example[1]),
+    ]
 
 
-def postprocess(tensor: torch.Tensor) -> PIL.Image.Image:
-    tensor = denormalize(tensor)
-    image = tensor.cpu().numpy().transpose(1, 2, 0)
-    return PIL.Image.fromarray(image)
-
-
-@torch.inference_mode()
-def run(
-    image,
-    style_type: str,
-    style_id: float,
-    structure_weight: float,
-    color_weight: float,
-    dlib_landmark_model,
-    encoder: nn.Module,
-    generator_dict: dict[str, nn.Module],
-    exstyle_dict: dict[str, dict[str, np.ndarray]],
-    transform: Callable,
-    device: torch.device,
-) -> tuple[PIL.Image.Image, PIL.Image.Image, PIL.Image.Image, PIL.Image.Image,
-           PIL.Image.Image]:
-    generator = generator_dict[style_type]
-    exstyles = exstyle_dict[style_type]
-
-    style_id = int(style_id)
-    style_id = min(max(0, style_id), len(exstyles) - 1)
-
-    stylename = list(exstyles.keys())[style_id]
-
-    image = align_face(filepath=image.name, predictor=dlib_landmark_model)
-    input_data = transform(image).unsqueeze(0).to(device)
-
-    img_rec, instyle = encoder(input_data,
-                               randomize_noise=False,
-                               return_latents=True,
-                               z_plus_latent=True,
-                               return_z_plus_latent=True,
-                               resize=False)
-    img_rec = torch.clamp(img_rec.detach(), -1, 1)
-
-    latent = torch.tensor(exstyles[stylename]).repeat(2, 1, 1).to(device)
-    # latent[0] for both color and structrue transfer and latent[1] for only structrue transfer
-    latent[1, 7:18] = instyle[0, 7:18]
-    exstyle = generator.generator.style(
-        latent.reshape(latent.shape[0] * latent.shape[1],
-                       latent.shape[2])).reshape(latent.shape)
-
-    img_gen, _ = generator([instyle.repeat(2, 1, 1)],
-                           exstyle,
-                           z_plus_latent=True,
-                           truncation=0.7,
-                           truncation_latent=0,
-                           use_res=True,
-                           interp_weights=[structure_weight] * 7 +
-                           [color_weight] * 11)
-    img_gen = torch.clamp(img_gen.detach(), -1, 1)
-    # deactivate color-related layers by setting w_c = 0
-    img_gen2, _ = generator([instyle],
-                            exstyle[0:1],
-                            z_plus_latent=True,
-                            truncation=0.7,
-                            truncation_latent=0,
-                            use_res=True,
-                            interp_weights=[structure_weight] * 7 + [0] * 11)
-    img_gen2 = torch.clamp(img_gen2.detach(), -1, 1)
-
-    img_rec = postprocess(img_rec[0])
-    img_gen0 = postprocess(img_gen[0])
-    img_gen1 = postprocess(img_gen[1])
-    img_gen2 = postprocess(img_gen2[0])
-
-    return image, img_rec, img_gen0, img_gen1, img_gen2
+def set_example_weights(example: list) -> list[dict]:
+    return [
+        gr.Slider.update(value=example[0]),
+        gr.Slider.update(value=example[1]),
+    ]
 
 
 def main():
     args = parse_args()
-    device = torch.device(args.device)
+    model = Model(device=args.device)
 
-    style_types = [
-        'cartoon',
-        'caricature',
-        'anime',
-        'arcane',
-        'comic',
-        'pixar',
-        'slamdunk',
-    ]
-    generator_dict = {
-        style_type: load_generator(style_type, device)
-        for style_type in style_types
-    }
-    exstyle_dict = {
-        style_type: load_exstylecode(style_type)
-        for style_type in style_types
-    }
+    with gr.Blocks(theme=args.theme, css='style.css') as demo:
+        gr.Markdown(DESCRIPTION)
 
-    dlib_landmark_model = create_dlib_landmark_model()
-    encoder = load_encoder(device)
-    transform = create_transform()
+        with gr.Box():
+            gr.Markdown('''## Step 1 (Preprocess Input Image)
 
-    func = functools.partial(run,
-                             dlib_landmark_model=dlib_landmark_model,
-                             encoder=encoder,
-                             generator_dict=generator_dict,
-                             exstyle_dict=exstyle_dict,
-                             transform=transform,
-                             device=device)
-    func = functools.update_wrapper(func, run)
+- Drop an image containing a near-frontal face to the **Input Image**.
+    - If there are multiple faces in the image, hit the Edit button in the upper right corner and crop the input image beforehand.
+- Hit the **Detect & Align Face** button.
+- Hit the **Reconstruct Face** button.
+    - The final result will be based on this **Reconstructed Face**. So, if the reconstructed image is not satisfactory, you may want to change the input image.
+''')
+            with gr.Row():
+                with gr.Column():
+                    with gr.Row():
+                        input_image = gr.Image(label='Input Image',
+                                               type='file')
+                    with gr.Row():
+                        detect_button = gr.Button('Detect & Align Face')
+                with gr.Column():
+                    with gr.Row():
+                        aligned_face = gr.Image(label='Aligned Face',
+                                                type='numpy',
+                                                interactive=False)
+                    with gr.Row():
+                        reconstruct_button = gr.Button('Reconstruct Face')
+                with gr.Column():
+                    reconstructed_face = gr.Image(label='Reconstructed Face',
+                                                  type='numpy')
+                    instyle = gr.Variable()
 
-    image_paths = sorted(pathlib.Path('images').glob('*.jpg'))
-    examples = [[path.as_posix(), 'cartoon', 26, 0.6, 1.0]
-                for path in image_paths]
+            with gr.Row():
+                paths = sorted(pathlib.Path('images').glob('*.jpg'))
+                example_images = gr.Dataset(components=[input_image],
+                                            samples=[[path.as_posix()]
+                                                     for path in paths])
 
-    gr.Interface(
-        func,
-        [
-            gr.inputs.Image(type='file', label='Input Image'),
-            gr.inputs.Radio(style_types,
-                            type='value',
-                            default='cartoon',
-                            label='Style Type'),
-            gr.inputs.Number(default=26, label='Style Image Index'),
-            gr.inputs.Slider(
-                0, 1, step=0.1, default=0.6, label='Structure Weight'),
-            gr.inputs.Slider(0, 1, step=0.1, default=1.0,
-                             label='Color Weight'),
-        ],
-        [
-            gr.outputs.Image(type='pil', label='Aligned Face'),
-            gr.outputs.Image(type='pil', label='Reconstructed'),
-            gr.outputs.Image(type='pil',
-                             label='Result 1 (Color and structure transfer)'),
-            gr.outputs.Image(type='pil',
-                             label='Result 2 (Structure transfer only)'),
-            gr.outputs.Image(
-                type='pil',
-                label='Result 3 (Color-related layers deactivated)'),
-        ],
-        examples=examples,
-        title=TITLE,
-        description=DESCRIPTION,
-        article=ARTICLE,
-        theme=args.theme,
-        allow_flagging=args.allow_flagging,
-        live=args.live,
-    ).launch(
+        with gr.Box():
+            gr.Markdown('''## Step 2 (Select Style Image)
+
+- Select **Style Type**.
+- Select **Style Image Index** from the image table below.
+''')
+            with gr.Row():
+                with gr.Column():
+                    style_type = gr.Radio(model.style_types,
+                                          label='Style Type')
+                    text = get_style_image_markdown_text('cartoon')
+                    style_image = gr.Markdown(value=text)
+                    style_index = gr.Slider(0,
+                                            316,
+                                            value=26,
+                                            step=1,
+                                            label='Style Image Index')
+
+            with gr.Row():
+                example_styles = gr.Dataset(
+                    components=[style_type, style_index],
+                    samples=[
+                        ['cartoon', 26],
+                        ['caricature', 65],
+                        ['arcane', 63],
+                        ['pixar', 80],
+                    ])
+
+        with gr.Box():
+            gr.Markdown('''## Step 3 (Generate Style Transferred Image)
+
+- Adjust **Structure Weight** and **Color Weight**.
+    - These are weights for the style image, so the larger the value, the closer the resulting image will be to the style image.
+- Hit the **Generate** button.
+''')
+            with gr.Row():
+                with gr.Column():
+                    with gr.Row():
+                        structure_weight = gr.Slider(0,
+                                                     1,
+                                                     value=0.6,
+                                                     step=0.1,
+                                                     label='Structure Weight')
+                    with gr.Row():
+                        color_weight = gr.Slider(0,
+                                                 1,
+                                                 value=1,
+                                                 step=0.1,
+                                                 label='Color Weight')
+                    with gr.Row():
+                        structure_only = gr.Checkbox(label='Structure Only')
+                    with gr.Row():
+                        generate_button = gr.Button('Generate')
+
+                with gr.Column():
+                    result = gr.Image(label='Result')
+
+            with gr.Row():
+                example_weights = gr.Dataset(
+                    components=[structure_weight, color_weight],
+                    samples=[
+                        [0.6, 1.0],
+                        [0.3, 1.0],
+                        [0.0, 1.0],
+                        [1.0, 0.0],
+                    ])
+
+        gr.Markdown(FOOTER)
+
+        detect_button.click(fn=model.detect_and_align_face,
+                            inputs=input_image,
+                            outputs=aligned_face)
+        reconstruct_button.click(fn=model.reconstruct_face,
+                                 inputs=aligned_face,
+                                 outputs=[reconstructed_face, instyle])
+        style_type.change(fn=update_slider,
+                          inputs=style_type,
+                          outputs=style_index)
+        style_type.change(fn=update_style_image,
+                          inputs=style_type,
+                          outputs=style_image)
+        generate_button.click(fn=model.generate,
+                              inputs=[
+                                  style_type,
+                                  style_index,
+                                  structure_weight,
+                                  color_weight,
+                                  structure_only,
+                                  instyle,
+                              ],
+                              outputs=result)
+        example_images.click(fn=set_example_image,
+                             inputs=example_images,
+                             outputs=example_images.components)
+        example_styles.click(fn=set_example_styles,
+                             inputs=example_styles,
+                             outputs=example_styles.components)
+        example_weights.click(fn=set_example_weights,
+                              inputs=example_weights,
+                              outputs=example_weights.components)
+
+    demo.launch(
         enable_queue=args.enable_queue,
         server_port=args.port,
         share=args.share,
