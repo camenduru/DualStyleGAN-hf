@@ -5,7 +5,7 @@ import os
 import pathlib
 import subprocess
 import sys
-from typing import Callable, Union
+from typing import Callable
 
 import dlib
 import huggingface_hub
@@ -31,7 +31,7 @@ MODEL_REPO = 'CVPR/DualStyleGAN'
 
 
 class Model:
-    def __init__(self, device: Union[torch.device, str]):
+    def __init__(self, device: torch.device | str):
         self.device = torch.device(device)
         self.landmark_model = self._create_dlib_landmark_model()
         self.encoder = self._load_encoder()
