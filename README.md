@@ -1,5 +1,5 @@
 ---
-title: Portrait Style Transfer
+title: Portrait Style Transfer with DualStyleGAN
 emoji: 😻
 colorFrom: purple
 colorTo: red
