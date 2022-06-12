@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as T
 
-if os.environ.get('SYSTEM') == 'spaces':
+if os.getenv('SYSTEM') == 'spaces':
     os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/fused_act.py")
     os.system("sed -i '10,17d' DualStyleGAN/model/stylegan/op/upfirdn2d.py")
 
