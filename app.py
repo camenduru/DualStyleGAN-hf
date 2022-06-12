@@ -44,7 +44,7 @@ def get_style_image_url(style_name: str) -> str:
 
 def get_style_image_markdown_text(style_name: str) -> str:
     url = get_style_image_url(style_name)
-    return f'<center><img id="style-image" src="{url}" alt="style image"></center>'
+    return f'<img id="style-image" src="{url}" alt="style image">'
 
 
 def update_slider(choice: str) -> dict:
