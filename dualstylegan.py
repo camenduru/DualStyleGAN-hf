@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import pathlib
+import subprocess
 import sys
 from typing import Callable, Union
 
@@ -23,8 +25,7 @@ from model.dualstylegan import DualStyleGAN
 from model.encoder.align_all_parallel import align_face
 from model.encoder.psp import pSp
 
-HF_TOKEN = os.environ['HF_TOKEN']
-MODEL_REPO = 'hysts/DualStyleGAN'
+MODEL_REPO = 'CVPR/DualStyleGAN'
 
 
 class Model:
@@ -54,16 +55,17 @@ class Model:
 
     @staticmethod
     def _create_dlib_landmark_model():
-        path = huggingface_hub.hf_hub_download(
-            'hysts/dlib_face_landmark_model',
-            'shape_predictor_68_face_landmarks.dat',
-            use_auth_token=HF_TOKEN)
-        return dlib.shape_predictor(path)
+        url = 'http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2'
+        path = pathlib.Path('shape_predictor_68_face_landmarks.dat')
+        if not path.exists():
+            bz2_path = 'shape_predictor_68_face_landmarks.dat.bz2'
+            torch.hub.download_url_to_file(url, bz2_path)
+            subprocess.run(f'bunzip2 -d {bz2_path}'.split())
+        return dlib.shape_predictor(path.as_posix())
 
     def _load_encoder(self) -> nn.Module:
         ckpt_path = huggingface_hub.hf_hub_download(MODEL_REPO,
-                                                    'models/encoder.pt',
-                                                    use_auth_token=HF_TOKEN)
+                                                    'models/encoder.pt')
         ckpt = torch.load(ckpt_path, map_location='cpu')
         opts = ckpt['opts']
         opts['device'] = self.device.type
@@ -87,9 +89,7 @@ class Model:
     def _load_generator(self, style_type: str) -> nn.Module:
         model = DualStyleGAN(1024, 512, 8, 2, res_index=6)
         ckpt_path = huggingface_hub.hf_hub_download(
-            MODEL_REPO,
-            f'models/{style_type}/generator.pt',
-            use_auth_token=HF_TOKEN)
+            MODEL_REPO, f'models/{style_type}/generator.pt')
         ckpt = torch.load(ckpt_path, map_location='cpu')
         model.load_state_dict(ckpt['g_ema'])
         model.to(self.device)
@@ -103,9 +103,7 @@ class Model:
         else:
             filename = 'exstyle_code.npy'
         path = huggingface_hub.hf_hub_download(
-            MODEL_REPO,
-            f'models/{style_type}/{filename}',
-            use_auth_token=HF_TOKEN)
+            MODEL_REPO, f'models/{style_type}/{filename}')
         exstyles = np.load(path, allow_pickle=True).item()
         return exstyles
 
