@@ -95,8 +95,7 @@ def main():
 
 - Drop an image containing a near-frontal face to the **Input Image**.
     - If there are multiple faces in the image, hit the Edit button in the upper right corner and crop the input image beforehand.
-- Hit the **Detect & Align Face** button.
-- Hit the **Reconstruct Face** button.
+- Hit the **Preprocess** button.
     - The final result will be based on this **Reconstructed Face**. So, if the reconstructed image is not satisfactory, you may want to change the input image.
 ''')
             with gr.Row():
@@ -105,14 +104,12 @@ def main():
                         input_image = gr.Image(label='Input Image',
                                                type='file')
                     with gr.Row():
-                        detect_button = gr.Button('Detect & Align Face')
+                        preprocess_button = gr.Button('Preprocess')
                 with gr.Column():
                     with gr.Row():
                         aligned_face = gr.Image(label='Aligned Face',
                                                 type='numpy',
                                                 interactive=False)
-                    with gr.Row():
-                        reconstruct_button = gr.Button('Reconstruct Face')
                 with gr.Column():
                     reconstructed_face = gr.Image(label='Reconstructed Face',
                                                   type='numpy')
@@ -193,12 +190,15 @@ def main():
 
         gr.Markdown(FOOTER)
 
-        detect_button.click(fn=model.detect_and_align_face,
-                            inputs=input_image,
-                            outputs=aligned_face)
-        reconstruct_button.click(fn=model.reconstruct_face,
-                                 inputs=aligned_face,
-                                 outputs=[reconstructed_face, instyle])
+        preprocess_button.click(fn=model.detect_and_align_face,
+                                inputs=input_image,
+                                outputs=aligned_face)
+        aligned_face.change(fn=model.reconstruct_face,
+                            inputs=aligned_face,
+                            outputs=[
+                                reconstructed_face,
+                                instyle,
+                            ])
         style_type.change(fn=update_slider,
                           inputs=style_type,
                           outputs=style_index)
