@@ -96,8 +96,13 @@ def main():
 - Drop an image containing a near-frontal face to the **Input Image**.
     - If there are multiple faces in the image, hit the Edit button in the upper right corner and crop the input image beforehand.
 - Hit the **Preprocess** button.
+    - Choose the encoder version. Default is Z+ encoder which has better stylization performance. W+ encoder better reconstructs the input image to preserve more details.
     - The final result will be based on this **Reconstructed Face**. So, if the reconstructed image is not satisfactory, you may want to change the input image.
 ''')
+            with gr.Row():
+                encoder_type = gr.Radio(choices=['Z+ encoder (better stylization)', 'W+ encoder (better reconstruction)'],
+                                         value='Z+ encoder (better stylization)',
+                                          label='Encoder Type')                
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
@@ -154,6 +159,7 @@ def main():
 
 - Adjust **Structure Weight** and **Color Weight**.
     - These are weights for the style image, so the larger the value, the closer the resulting image will be to the style image.
+    - Tips: For W+ encoder, better way of (Structure Only) is to uncheck (Structure Only) and set Color weight to 0. 
 - Hit the **Generate** button.
 ''')
             with gr.Row():
@@ -191,10 +197,10 @@ def main():
         gr.Markdown(FOOTER)
 
         preprocess_button.click(fn=model.detect_and_align_face,
-                                inputs=input_image,
+                                inputs=[input_image],
                                 outputs=aligned_face)
         aligned_face.change(fn=model.reconstruct_face,
-                            inputs=aligned_face,
+                            inputs=[aligned_face, encoder_type],
                             outputs=[
                                 reconstructed_face,
                                 instyle,
