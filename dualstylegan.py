@@ -34,8 +34,9 @@ class Model:
     def __init__(self, device: torch.device | str):
         self.device = torch.device(device)
         self.landmark_model = self._create_dlib_landmark_model()
-        self.encoder = self._load_encoder()
+        self.encoder_dict = self._load_encoder()
         self.transform = self._create_transform()
+        self.encoder_type = 'z+'
 
         self.style_types = [
             'cartoon',
@@ -76,7 +77,20 @@ class Model:
         model = pSp(opts)
         model.to(self.device)
         model.eval()
-        return model
+        
+        ckpt_path = huggingface_hub.hf_hub_download(MODEL_REPO,
+                                                    'models/encoder_wplus.pt')
+        ckpt = torch.load(ckpt_path, map_location='cpu')
+        opts = ckpt['opts']
+        opts['device'] = self.device.type
+        opts['checkpoint_path'] = ckpt_path
+        opts['output_size'] = 1024   
+        opts = argparse.Namespace(**opts)
+        model2 = pSp(opts)
+        model2.to(self.device)
+        model2.eval()
+
+        return {'z+': model, 'w+': model2}
 
     @staticmethod
     def _create_transform() -> Callable:
@@ -111,6 +125,9 @@ class Model:
 
     def detect_and_align_face(self, image) -> np.ndarray:
         image = align_face(filepath=image.name, predictor=self.landmark_model)
+        x, y = np.random.randint(255), np.random.randint(255)
+        r, g, b = image.getpixel((x, y))
+        image.putpixel((x, y), (r, g+1, b)) # trick to make sure run reconstruct_face() once any input setting changes
         return image
 
     @staticmethod
@@ -123,14 +140,22 @@ class Model:
 
     @torch.inference_mode()
     def reconstruct_face(self,
-                         image: np.ndarray) -> tuple[np.ndarray, torch.Tensor]:
+                         image: np.ndarray, encoder_type: str) -> tuple[np.ndarray, torch.Tensor]:
+        if encoder_type == 'Z+ encoder (better stylization)':
+            self.encoder_type = 'z+'
+            z_plus_latent = True
+            return_z_plus_latent = True 
+        else:
+            self.encoder_type = 'w+'
+            z_plus_latent = False
+            return_z_plus_latent = False             
         image = PIL.Image.fromarray(image)
         input_data = self.transform(image).unsqueeze(0).to(self.device)
-        img_rec, instyle = self.encoder(input_data,
+        img_rec, instyle = self.encoder_dict[self.encoder_type](input_data,
                                         randomize_noise=False,
                                         return_latents=True,
-                                        z_plus_latent=True,
-                                        return_z_plus_latent=True,
+                                        z_plus_latent=z_plus_latent,
+                                        return_z_plus_latent=return_z_plus_latent,
                                         resize=False)
         img_rec = torch.clamp(img_rec.detach(), -1, 1)
         img_rec = self.postprocess(img_rec[0])
@@ -140,6 +165,15 @@ class Model:
     def generate(self, style_type: str, style_id: int, structure_weight: float,
                  color_weight: float, structure_only: bool,
                  instyle: torch.Tensor) -> np.ndarray:
+
+
+        if self.encoder_type == 'z+':
+            z_plus_latent = True
+            input_is_latent = False
+        else:
+            z_plus_latent = False
+            input_is_latent = True 
+
         generator = self.generator_dict[style_type]
         exstyles = self.exstyle_dict[style_type]
 
@@ -147,15 +181,18 @@ class Model:
         stylename = list(exstyles.keys())[style_id]
 
         latent = torch.tensor(exstyles[stylename]).to(self.device)
-        if structure_only:
+        if structure_only and self.encoder_type == 'z+':
             latent[0, 7:18] = instyle[0, 7:18]
         exstyle = generator.generator.style(
             latent.reshape(latent.shape[0] * latent.shape[1],
                            latent.shape[2])).reshape(latent.shape)
+        if structure_only and self.encoder_type == 'w+':
+            exstyle[:,7:18] = instyle[:,7:18]
 
         img_gen, _ = generator([instyle],
                                exstyle,
-                               z_plus_latent=True,
+                               input_is_latent=input_is_latent,
+                               z_plus_latent=z_plus_latent,
                                truncation=0.7,
                                truncation_latent=0,
                                use_res=True,
